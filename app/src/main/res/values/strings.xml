@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">DoteNote</string>
+    <string name="title_activity_maps">Map</string>
+    <string name="title_select_model">Select model</string>
+    <string name="title_edit_model">Edit model</string>
+    <string name="title_add_text">Add text</string>
+    <string name="done_item">Done</string>
+    <string name="add_text_hint">Write here</string>
+    <string name="preview_button">Preview</string>
+    <string name="post_button">Post</string>
+</resources>
