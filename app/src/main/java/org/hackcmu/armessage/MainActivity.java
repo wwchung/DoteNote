@@ -28,12 +28,10 @@ import com.google.ar.sceneform.ux.TransformableNode;
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final double MIN_OPENGL_VERSION = 3.0;
-    private static final int MY_PERMISSIONS_REQUEST_LOCATION = 1;
 
     private ArFragment arFragment;
     private ModelRenderable andyRenderable;
 
-    private boolean mRequestingLocationUpdates = true;
     private ImageButton mMapButton;
     private FloatingActionButton mCreateButton;
 
@@ -133,18 +131,4 @@ public class MainActivity extends AppCompatActivity {
         }
         return true;
     }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (mRequestingLocationUpdates) {
-//            startLocationUpdates();
-        }
-    }
-
-//    private void startLocationUpdates() {
-//        mFusedLocationClient.requestLocationUpdates(mLocationRequest,
-//                mLocationCallback,
-//                null /* Looper */);
-//    }
 }

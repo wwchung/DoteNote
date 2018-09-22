@@ -9,10 +9,10 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
@@ -20,28 +20,16 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
-import com.firebase.geofire.GeoFire;
-import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.model.LatLng;
-import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.ar.core.Anchor;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
-import com.google.ar.core.Pose;
-import com.google.ar.core.Session;
-import com.google.ar.core.TrackingState;
 import com.google.ar.sceneform.AnchorNode;
-import com.google.ar.sceneform.FrameTime;
-import com.google.ar.sceneform.Scene;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
 
 public class PreviewModelActivity extends AppCompatActivity {
     private static final int MY_PERMISSIONS_REQUEST_LOCATION = 1;
@@ -50,12 +38,9 @@ public class PreviewModelActivity extends AppCompatActivity {
     private static final double MIN_OPENGL_VERSION = 3.0;
     private ArFragment arFragment;
     private ModelRenderable andyRenderable;
-    private boolean mPlaneCreated = false;
     private Button mPostButton;
 
-    private DatabaseReference mDbRef;
     private FusedLocationProviderClient mFusedLocationClient;
-    private String mKey;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -70,10 +55,10 @@ public class PreviewModelActivity extends AppCompatActivity {
         setContentView(R.layout.activity_preview_model);
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
 
-        Toast toast1 =
+        Toast previewToast =
                 Toast.makeText(this, "Click on a plane to preview note", Toast.LENGTH_SHORT);
-        toast1.setGravity(Gravity.CENTER, 0, 0);
-        toast1.show();
+        previewToast.setGravity(Gravity.CENTER, 0, 0);
+        previewToast.show();
 
         // When you build a Renderable, Sceneform loads its resources in the background while returning
         // a CompletableFuture. Call thenAccept(), handle(), or check isDone() before calling get().
@@ -112,10 +97,10 @@ public class PreviewModelActivity extends AppCompatActivity {
         mPostButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Toast toast2 =
+                Toast postedToast =
                         Toast.makeText(PreviewModelActivity.this, "Note posted", Toast.LENGTH_LONG);
-                toast2.setGravity(Gravity.CENTER, 0, -300);
-                toast2.show();
+                postedToast.setGravity(Gravity.CENTER, 0, -300);
+                postedToast.show();
 
                 if (ContextCompat.checkSelfPermission(PreviewModelActivity.this,
                         android.Manifest.permission.ACCESS_FINE_LOCATION)

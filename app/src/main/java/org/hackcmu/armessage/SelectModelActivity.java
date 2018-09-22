@@ -3,11 +3,8 @@ package org.hackcmu.armessage;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.ImageButton;
-
-import java.util.List;
 
 public class SelectModelActivity extends AppCompatActivity {
     private ImageButton mHeartButton;
