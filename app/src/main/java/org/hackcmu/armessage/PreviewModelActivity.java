@@ -20,6 +20,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
+import com.firebase.geofire.GeoFire;
+import com.firebase.geofire.GeoLocation;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -30,6 +32,10 @@ import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
+import com.google.firebase.FirebaseError;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 public class PreviewModelActivity extends AppCompatActivity {
     private static final int MY_PERMISSIONS_REQUEST_LOCATION = 1;
@@ -39,6 +45,7 @@ public class PreviewModelActivity extends AppCompatActivity {
     private ArFragment arFragment;
     private ModelRenderable andyRenderable;
     private Button mPostButton;
+    private String mKey;
 
     private FusedLocationProviderClient mFusedLocationClient;
 
@@ -47,6 +54,9 @@ public class PreviewModelActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        DatabaseReference databaseRef = FirebaseDatabase.getInstance().getReference();
+        mKey = databaseRef.child("notes").push().getKey();
 
         if (!checkIsSupportedDeviceOrFinish(this)) {
             return;
@@ -57,7 +67,7 @@ public class PreviewModelActivity extends AppCompatActivity {
 
         Toast previewToast =
                 Toast.makeText(this, "Click on a plane to preview note", Toast.LENGTH_SHORT);
-        previewToast.setGravity(Gravity.CENTER, 0, 0);
+        previewToast.setGravity(Gravity.CENTER, 0, -300);
         previewToast.show();
 
         // When you build a Renderable, Sceneform loads its resources in the background while returning
@@ -116,10 +126,15 @@ public class PreviewModelActivity extends AppCompatActivity {
                                     if (location != null) {
                                         double lat = location.getLatitude();
                                         double lng = location.getLongitude();
-//                                        DatabaseReference geoFireRef = FirebaseDatabase.getInstance().getReference("geofire");
-//                                        GeoFire geoFire = new GeoFire(geoFireRef);
-//                                        geoFire.setLocation(mKey, new GeoLocation(lat, lng));
 
+                                        DatabaseReference ref = FirebaseDatabase.getInstance().getReference("geofire");
+                                        GeoFire geoFire = new GeoFire(ref);
+                                        geoFire.setLocation(mKey, new GeoLocation(lat, lng), new GeoFire.CompletionListener() {
+                                            @Override
+                                            public void onComplete(String key, DatabaseError error) {
+
+                                            }
+                                        });
                                     }
                                 }
                             });

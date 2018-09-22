@@ -1,12 +1,18 @@
 package org.hackcmu.armessage;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.location.Location;
 import android.net.Uri;
 import android.os.Build;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -17,6 +23,19 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.Toast;
 
+import com.firebase.geofire.GeoFire;
+import com.firebase.geofire.GeoLocation;
+import com.firebase.geofire.GeoQuery;
+import com.firebase.geofire.GeoQueryEventListener;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.ar.core.Anchor;
 import com.google.ar.core.HitResult;
 import com.google.ar.core.Plane;
@@ -24,14 +43,25 @@ import com.google.ar.sceneform.AnchorNode;
 import com.google.ar.sceneform.rendering.ModelRenderable;
 import com.google.ar.sceneform.ux.ArFragment;
 import com.google.ar.sceneform.ux.TransformableNode;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
     private static final double MIN_OPENGL_VERSION = 3.0;
+    private static final int MY_PERMISSIONS_REQUEST_LOCATION = 1;
 
     private ArFragment arFragment;
     private ModelRenderable andyRenderable;
 
+    private FusedLocationProviderClient mFusedLocationClient;
+    private boolean mRequestingLocationUpdates = true;
+    private LocationCallback mLocationCallback;
+    private GeoQuery mGeoQuery;
+    private boolean mOnGeoQueryReady = false;
+
+    private Button mNotificationButtion;
     private ImageButton mMapButton;
     private FloatingActionButton mCreateButton;
 
@@ -47,6 +77,27 @@ public class MainActivity extends AppCompatActivity {
         if (!checkIsSupportedDeviceOrFinish(this)) {
             return;
         }
+
+        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+
+        getCurrLocation();
+
+        mLocationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(LocationResult locationResult) {
+                if (locationResult == null) {
+                    return;
+                }
+                for (Location location : locationResult.getLocations()) {
+                    double lat = location.getLatitude();
+                    double lng = location.getLongitude();
+
+                    if (mOnGeoQueryReady) {
+                        mGeoQuery.setCenter(new GeoLocation(lat, lng));
+                    }
+                }
+            }
+        };
 
         setContentView(R.layout.activity_main);
         arFragment = (ArFragment) getSupportFragmentManager().findFragmentById(R.id.ux_fragment);
@@ -68,6 +119,10 @@ public class MainActivity extends AppCompatActivity {
 
         arFragment.setOnTapArPlaneListener(
                 (HitResult hitResult, Plane plane, MotionEvent motionEvent) -> {
+                    if (!mNoteNearby) {
+                        return;
+                    }
+
                     if (andyRenderable == null) {
                         return;
                     }
@@ -83,6 +138,17 @@ public class MainActivity extends AppCompatActivity {
                     andy.setRenderable(andyRenderable);
                     andy.select();
                 });
+
+        mNotificationButtion = findViewById(R.id.notification_button);
+        mNotificationButtion.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Toast notificationToast =
+                        Toast.makeText(MainActivity.this, "Click on a plane to open note", Toast.LENGTH_SHORT);
+                notificationToast.setGravity(Gravity.CENTER, 0, -300);
+                notificationToast.show();
+            }
+        });
 
         mMapButton = findViewById(R.id.map_button);
         mMapButton.setOnClickListener(new View.OnClickListener() {
@@ -130,5 +196,111 @@ public class MainActivity extends AppCompatActivity {
             return false;
         }
         return true;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (mRequestingLocationUpdates) {
+            startLocationUpdates();
+        }
+    }
+
+    private void startLocationUpdates() {
+        LocationRequest request = new LocationRequest();
+        request.setInterval(10000);
+        request.setFastestInterval(5000);
+        request.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        if (ContextCompat.checkSelfPermission(this,
+                android.Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    MY_PERMISSIONS_REQUEST_LOCATION);
+        } else {
+            mFusedLocationClient.requestLocationUpdates(request, mLocationCallback, null);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        stopLocationUpdates();
+    }
+
+    private void stopLocationUpdates() {
+        mFusedLocationClient.removeLocationUpdates(mLocationCallback);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           @NonNull String permissions[],
+                                           @NonNull int[] grantResults) {
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_LOCATION: {
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    startLocationUpdates();
+                }
+            }
+        }
+    }
+
+    private void getCurrLocation() {
+        if (ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    MY_PERMISSIONS_REQUEST_LOCATION);
+        } else {
+            mFusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                        @Override
+                        public void onSuccess(Location location) {
+                            if (location != null) {
+                                double lat = location.getLatitude();
+                                double lng = location.getLongitude();
+                                addGeoQuery(lat, lng);
+                                mOnGeoQueryReady = true;
+                            }
+                        }
+                    });
+        }
+    }
+
+    private void addGeoQuery(double lat, double lng) {
+        DatabaseReference ref = FirebaseDatabase.getInstance().getReference("geofire");
+        GeoFire geoFire = new GeoFire(ref);
+
+        mGeoQuery = geoFire.queryAtLocation(new GeoLocation(lat, lng), 0.01);
+        mGeoQuery.addGeoQueryEventListener(new GeoQueryEventListener() {
+            @Override
+            public void onKeyEntered(String key, GeoLocation location) {
+                mNotificationButtion.setVisibility(View.VISIBLE);
+                mNoteNearby = true;
+            }
+
+            @Override
+            public void onKeyExited(String key) {
+                mNotificationButtion.setVisibility(View.GONE);
+                mNoteNearby = false;
+            }
+
+            @Override
+            public void onKeyMoved(String key, GeoLocation location) {
+
+            }
+
+            @Override
+            public void onGeoQueryReady() {
+
+            }
+
+            @Override
+            public void onGeoQueryError(DatabaseError error) {
+
+            }
+        });
     }
 }
